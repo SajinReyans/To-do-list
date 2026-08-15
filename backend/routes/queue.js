@@ -1,14 +1,35 @@
 import { Router } from "express";
-import { nanoid } from "nanoid";
-import { readDb, writeDb } from "../store.js";
+import { supabase } from "../supabase.js";
 
 const router = Router();
 
-// GET all queue tasks, ordered left-to-right
+function formatTask(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    deadline: row.deadline,
+    checked: row.checked,
+    order: row.order,
+    createdAt: row.created_at,
+  };
+}
+
+// GET all queue tasks for the authenticated user, ordered left-to-right
 router.get("/", async (req, res) => {
-  const db = await readDb();
-  const tasks = [...db.queueTasks].sort((a, b) => a.order - b.order);
-  res.json(tasks);
+  const db = req.supabase || supabase;
+  try {
+    const { data, error } = await db
+      .from("queue_tasks")
+      .select("*")
+      .eq("user_id", req.userId)
+      .order("order", { ascending: true });
+
+    if (error) throw error;
+    res.json((data || []).map(formatTask));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST create a new queue task (added to the right end)
@@ -17,44 +38,88 @@ router.post("/", async (req, res) => {
   if (!title || !title.trim()) {
     return res.status(400).json({ error: "Title is required" });
   }
-  const db = await readDb();
-  const maxOrder = db.queueTasks.reduce((m, t) => Math.max(m, t.order), -1);
-  const task = {
-    id: nanoid(),
-    title: title.trim(),
-    deadline: deadline || null,
-    checked: false,
-    order: maxOrder + 1,
-    createdAt: new Date().toISOString(),
-  };
-  db.queueTasks.push(task);
-  await writeDb(db);
-  res.status(201).json(task);
+
+  const db = req.supabase || supabase;
+  try {
+    // Find current max order for this user
+    const { data: maxRow, error: maxError } = await db
+      .from("queue_tasks")
+      .select("order")
+      .eq("user_id", req.userId)
+      .order("order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (maxError) throw maxError;
+
+    const nextOrder = maxRow && maxRow.order !== null ? maxRow.order + 1 : 0;
+
+    const { data, error } = await db
+      .from("queue_tasks")
+      .insert({
+        user_id: req.userId,
+        title: title.trim(),
+        deadline: deadline || null,
+        checked: false,
+        order: nextOrder,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(formatTask(data));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // PATCH update a queue task (toggle checked, edit title/deadline)
 router.patch("/:id", async (req, res) => {
-  const db = await readDb();
-  const task = db.queueTasks.find((t) => t.id === req.params.id);
-  if (!task) return res.status(404).json({ error: "Task not found" });
   const { title, deadline, checked } = req.body;
-  if (title !== undefined) task.title = title;
-  if (deadline !== undefined) task.deadline = deadline;
-  if (checked !== undefined) task.checked = checked;
-  await writeDb(db);
-  res.json(task);
+  const updates = {};
+  if (title !== undefined) updates.title = title;
+  if (deadline !== undefined) updates.deadline = deadline;
+  if (checked !== undefined) updates.checked = checked;
+
+  const db = req.supabase || supabase;
+  try {
+    const { data, error } = await db
+      .from("queue_tasks")
+      .update(updates)
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId)
+      .select()
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: "Task not found" });
+
+    res.json(formatTask(data));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE a queue task
 router.delete("/:id", async (req, res) => {
-  const db = await readDb();
-  const before = db.queueTasks.length;
-  db.queueTasks = db.queueTasks.filter((t) => t.id !== req.params.id);
-  if (db.queueTasks.length === before) {
-    return res.status(404).json({ error: "Task not found" });
+  const db = req.supabase || supabase;
+  try {
+    const { data, error } = await db
+      .from("queue_tasks")
+      .delete()
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId)
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    res.status(204).end();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  await writeDb(db);
-  res.status(204).end();
 });
 
 export default router;

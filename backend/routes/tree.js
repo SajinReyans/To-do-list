@@ -1,12 +1,24 @@
 import { Router } from "express";
-import { nanoid } from "nanoid";
-import { readDb, writeDb } from "../store.js";
+import { supabase } from "../supabase.js";
 
 const router = Router();
 
+function formatNode(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    parentId: row.parent_id,
+    deadline: row.deadline,
+    checked: row.checked,
+    order: row.order,
+    createdAt: row.created_at,
+  };
+}
+
 function buildTree(nodes, parentId = null) {
   return nodes
-    .filter((n) => n.parentId === parentId)
+    .filter((n) => (n.parentId ?? null) === (parentId ?? null))
     .sort((a, b) => a.order - b.order)
     .map((n) => ({ ...n, children: buildTree(nodes, n.id) }));
 }
@@ -44,8 +56,20 @@ function bubbleUp(nodes, id) {
 
 // GET full tree (nested)
 router.get("/", async (req, res) => {
-  const db = await readDb();
-  res.json(buildTree(db.treeNodes, null));
+  const db = req.supabase || supabase;
+  try {
+    const { data, error } = await db
+      .from("tree_nodes")
+      .select("*")
+      .eq("user_id", req.userId)
+      .order("order", { ascending: true });
+
+    if (error) throw error;
+    const formatted = (data || []).map(formatNode);
+    res.json(buildTree(formatted, null));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST create a node (group or task). parentId null = root group.
@@ -54,50 +78,148 @@ router.post("/", async (req, res) => {
   if (!title || !title.trim()) {
     return res.status(400).json({ error: "Title is required" });
   }
-  const db = await readDb();
-  const siblingMax = db.treeNodes
-    .filter((n) => n.parentId === (parentId || null))
-    .reduce((m, n) => Math.max(m, n.order), -1);
-  const node = {
-    id: nanoid(),
-    title: title.trim(),
-    parentId: parentId || null,
-    deadline: deadline || null,
-    checked: false,
-    order: siblingMax + 1,
-    createdAt: new Date().toISOString(),
-  };
-  db.treeNodes.push(node);
-  await writeDb(db);
-  res.status(201).json(node);
+
+  const db = req.supabase || supabase;
+  try {
+    // Find max order among siblings
+    let query = db
+      .from("tree_nodes")
+      .select("order")
+      .eq("user_id", req.userId);
+
+    if (parentId) {
+      query = query.eq("parent_id", parentId);
+    } else {
+      query = query.is("parent_id", null);
+    }
+
+    const { data: maxRow, error: maxError } = await query
+      .order("order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (maxError) throw maxError;
+
+    const nextOrder = maxRow && maxRow.order !== null ? maxRow.order + 1 : 0;
+
+    const { data, error } = await db
+      .from("tree_nodes")
+      .insert({
+        user_id: req.userId,
+        title: title.trim(),
+        parent_id: parentId || null,
+        deadline: deadline || null,
+        checked: false,
+        order: nextOrder,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(formatNode(data));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // PATCH update a node. Setting `checked` cascades to descendants + bubbles up.
 router.patch("/:id", async (req, res) => {
-  const db = await readDb();
-  const node = db.treeNodes.find((n) => n.id === req.params.id);
-  if (!node) return res.status(404).json({ error: "Node not found" });
-  const { title, deadline, checked } = req.body;
-  if (title !== undefined) node.title = title;
-  if (deadline !== undefined) node.deadline = deadline;
-  if (checked !== undefined) cascade(db.treeNodes, node.id, checked);
-  await writeDb(db);
-  res.json(buildTree(db.treeNodes, null));
+  const db = req.supabase || supabase;
+  try {
+    const { data: rows, error: fetchError } = await db
+      .from("tree_nodes")
+      .select("*")
+      .eq("user_id", req.userId);
+
+    if (fetchError) throw fetchError;
+
+    const nodes = (rows || []).map(formatNode);
+    const targetNode = nodes.find((n) => n.id === req.params.id);
+    if (!targetNode) return res.status(404).json({ error: "Node not found" });
+
+    const { title, deadline, checked } = req.body;
+    if (title !== undefined) targetNode.title = title;
+    if (deadline !== undefined) targetNode.deadline = deadline;
+    if (checked !== undefined) cascade(nodes, targetNode.id, checked);
+
+    // Identify changed nodes to update in Supabase
+    const originalMap = new Map((rows || []).map((r) => [r.id, formatNode(r)]));
+    const updates = nodes.filter((n) => {
+      const orig = originalMap.get(n.id);
+      return orig && (orig.checked !== n.checked || orig.title !== n.title || orig.deadline !== n.deadline);
+    });
+
+    for (const n of updates) {
+      await db
+        .from("tree_nodes")
+        .update({
+          title: n.title,
+          deadline: n.deadline,
+          checked: n.checked,
+        })
+        .eq("id", n.id)
+        .eq("user_id", req.userId);
+    }
+
+    res.json(buildTree(nodes, null));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // DELETE a node and all its descendants
 router.delete("/:id", async (req, res) => {
-  const db = await readDb();
-  const descendants = getDescendantIds(db.treeNodes, req.params.id);
-  const toRemove = new Set([req.params.id, ...descendants]);
-  const before = db.treeNodes.length;
-  db.treeNodes = db.treeNodes.filter((n) => !toRemove.has(n.id));
-  if (db.treeNodes.length === before) {
-    return res.status(404).json({ error: "Node not found" });
+  const db = req.supabase || supabase;
+  try {
+    const { data: rows, error: fetchError } = await db
+      .from("tree_nodes")
+      .select("*")
+      .eq("user_id", req.userId);
+
+    if (fetchError) throw fetchError;
+
+    const nodes = (rows || []).map(formatNode);
+    const targetNode = nodes.find((n) => n.id === req.params.id);
+    if (!targetNode) {
+      return res.status(404).json({ error: "Node not found" });
+    }
+
+    const descendants = getDescendantIds(nodes, req.params.id);
+    const toRemove = new Set([req.params.id, ...descendants]);
+    const remainingNodes = nodes.filter((n) => !toRemove.has(n.id));
+
+    // Delete node and its descendants
+    const { error: deleteError } = await db
+      .from("tree_nodes")
+      .delete()
+      .in("id", Array.from(toRemove))
+      .eq("user_id", req.userId);
+
+    if (deleteError) throw deleteError;
+
+    // If target had a parent, re-bubble checked state up in remaining nodes
+    if (targetNode.parentId) {
+      bubbleUp(remainingNodes, targetNode.parentId);
+
+      const originalMap = new Map((rows || []).map((r) => [r.id, formatNode(r)]));
+      const parentUpdates = remainingNodes.filter((n) => {
+        const orig = originalMap.get(n.id);
+        return orig && orig.checked !== n.checked;
+      });
+
+      for (const n of parentUpdates) {
+        await db
+          .from("tree_nodes")
+          .update({ checked: n.checked })
+          .eq("id", n.id)
+          .eq("user_id", req.userId);
+      }
+    }
+
+    res.json(buildTree(remainingNodes, null));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  // Re-bubble parent state after removal
-  await writeDb(db);
-  res.json(buildTree(db.treeNodes, null));
 });
 
 export default router;

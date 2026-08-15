@@ -1,22 +1,61 @@
 # Dependencies
-node_modules
+node_modules/
+.pnp
+.pnp.js
 
-# Build output
-dist
-dist-ssr
-frontend/build/
-
-# Environment / secrets
+# Environment & Secrets (Never commit credentials)
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 *.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Runtime data (contains your actual tasks — don't commit)
-backend/data/db.json
+# API Keys, Certificates & Tokens
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.pkcs12
+credentials.json
+client_secret*.json
+serviceAccountKey*.json
+firebase-adminsdk*.json
+*-credentials.json
+
+# Local Databases, Dumps & Storage
+backend/data/
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.bak
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+frontend/build/
+out/
+.next/
+
+# Vite, Turbo & Build Caches
+.vite/
+.turbo/
+.cache/
+.eslintcache
+.stylelintcache
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -24,16 +63,20 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Editor directories and files
+# OS & Editor files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Vite cache
-.vite/
+*.tmp

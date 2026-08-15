@@ -1,19 +1,35 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { THEMES, THEME_ORDER } from "../themes.js";
 import { getSettings, updateSettings } from "../api.js";
+import { useAuth } from "./AuthContext.jsx";
 
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
+  const { session } = useAuth();
   const [themeId, setThemeId] = useState("cottonCandy");
   const [loaded, setLoaded] = useState(false);
 
+  const userId = session?.user?.id;
+
   useEffect(() => {
+    if (!userId) {
+      setThemeId("cottonCandy");
+      setLoaded(true);
+      return;
+    }
+
     getSettings()
-      .then((s) => setThemeId(s.theme || "cottonCandy"))
+      .then((s) => {
+        if (s?.theme && THEMES[s.theme]) {
+          setThemeId(s.theme);
+        } else {
+          setThemeId("cottonCandy");
+        }
+      })
       .catch(() => {})
       .finally(() => setLoaded(true));
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     const vars = THEMES[themeId]?.vars || THEMES.cottonCandy.vars;

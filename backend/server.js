@@ -1,8 +1,11 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { requireAuth } from "./middleware/auth.js";
 import queueRoutes from "./routes/queue.js";
 import treeRoutes from "./routes/tree.js";
 import settingsRoutes from "./routes/settings.js";
+import habitsRoutes from "./routes/habits.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -10,11 +13,14 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/queue", queueRoutes);
-app.use("/api/tree", treeRoutes);
-app.use("/api/settings", settingsRoutes);
-
+// Public endpoints
 app.get("/api/health", (req, res) => res.json({ ok: true }));
+
+// Protected endpoints requiring valid Supabase user JWT
+app.use("/api/queue", requireAuth, queueRoutes);
+app.use("/api/tree", requireAuth, treeRoutes);
+app.use("/api/settings", requireAuth, settingsRoutes);
+app.use("/api/habits", requireAuth, habitsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Todo backend running on http://localhost:${PORT}`);

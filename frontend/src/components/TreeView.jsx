@@ -97,7 +97,7 @@ export default function TreeView() {
         </div>
       ) : (
         <div
-          className="rounded-3xl p-6 flex flex-col gap-5"
+          className="rounded-3xl p-6 flex flex-col gap-4 overflow-x-auto"
           style={{ backgroundColor: "var(--surface)", border: "2px solid var(--border)" }}
         >
           {tree.map((node) => (

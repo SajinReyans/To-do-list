@@ -40,7 +40,7 @@ export default function TaskBlock({ task, index, onToggle, onDelete, altCard }) 
         {hover && !task.checked && (
           <button
             onClick={() => onDelete(task.id)}
-            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white text-[color:var(--text)] text-xs shadow flex items-center justify-center border"
+            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white text-black text-xs font-bold shadow flex items-center justify-center border-2 cursor-pointer transition-transform hover:scale-110"
             style={{ borderColor: "var(--border)" }}
             title="Delete task"
           >
@@ -51,7 +51,7 @@ export default function TaskBlock({ task, index, onToggle, onDelete, altCard }) 
         <div className="flex items-start justify-between gap-2">
           <button
             onClick={() => onToggle(task.id, !task.checked)}
-            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 ${
+            className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 cursor-pointer ${
               task.checked ? "animate-popCheck" : ""
             }`}
             style={{
@@ -69,8 +69,8 @@ export default function TaskBlock({ task, index, onToggle, onDelete, altCard }) 
         </div>
 
         <p
-          className={`font-display font-medium text-sm leading-snug break-words ${
-            task.checked ? "line-through" : ""
+          className={`font-display font-semibold text-sm leading-snug break-words ${
+            task.checked ? "line-through opacity-60" : ""
           }`}
           style={{ color: "var(--text)" }}
         >
@@ -82,8 +82,9 @@ export default function TaskBlock({ task, index, onToggle, onDelete, altCard }) 
             <span
               className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
               style={{
-                backgroundColor: overdue ? "#f6242433" : "rgba(255,255,255,0.6)",
-                color: overdue ? "#c81e33" : "var(--text-soft)",
+                backgroundColor: overdue ? "#f6242422" : "var(--surface)",
+                color: overdue ? "#c81e33" : "var(--text)",
+                border: "1px solid var(--border)",
               }}
             >
               {overdue ? "Overdue · " : "Due "}
