@@ -17,11 +17,13 @@ Node.js/Express backend + React/Tailwind frontend powered by **Supabase Authenti
 ## Project structure
 ```
 aloft-todo-app/
+  api/                Vercel Serverless Function entry point (api/index.js)
   backend/            Express API with Supabase Auth verification & DB queries
   frontend/           React + Vite + Tailwind CSS with Supabase AuthContext & AuthScreen
   supabase/           Database schema and migrations
     schema.sql        Full database schema, indexes, and RLS policies
     migrations/       Timestamped migrations for Supabase CLI
+  vercel.json         Vercel deployment configuration
 ```
 
 ## Supabase Setup & Database Migration
@@ -79,6 +81,26 @@ npm run dev
 ```
 
 Open http://localhost:5173 — sign in with email or click **Continue with Google** to start using Aloft!
+
+## Vercel Deployment
+
+Deploy this entire application (Frontend + Serverless Express Backend) to Vercel in a single project:
+
+1. Push this repository to GitHub / GitLab / Bitbucket.
+2. In [Vercel Dashboard](https://vercel.com/new), click **Add New Project** and import this repository.
+3. Keep the default settings:
+   - **Framework Preset**: Vite (or Other)
+   - **Root Directory**: `./` (leave as project root)
+   - **Build Command**: `npm run build --prefix frontend` (automatically configured by `vercel.json`)
+   - **Output Directory**: `frontend/dist` (automatically configured by `vercel.json`)
+4. Add the following **Environment Variables** in Vercel (*Project Settings > Environment Variables*):
+   - `VITE_SUPABASE_URL`: Your Supabase Project URL (`https://<project-ref>.supabase.co`)
+   - `VITE_SUPABASE_ANON_KEY`: Your Supabase Anon/Public API Key
+   - `SUPABASE_URL`: Your Supabase Project URL (`https://<project-ref>.supabase.co`)
+   - `SUPABASE_ANON_KEY`: Your Supabase Anon/Public API Key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Service Role API Key
+5. Click **Deploy**.
+6. In Supabase Dashboard, navigate to *Authentication > URL Configuration > Redirect URLs* and add your Vercel deployment URL (e.g. `https://your-app.vercel.app` and `https://your-app.vercel.app/**`).
 
 ## API overview
 All `/api/*` endpoints (except `/api/health`) require an `Authorization: Bearer <access_token>` header verified against Supabase Auth:

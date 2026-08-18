@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient.js";
 
-const BASE = "http://localhost:4000/api";
+const BASE = "/api";
 
 async function request(path, options = {}) {
   // Retrieve token from Supabase session for each request (auto-refreshed by Supabase client)
