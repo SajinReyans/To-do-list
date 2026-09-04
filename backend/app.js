@@ -1,4 +1,7 @@
 import "dotenv/config";
+import path from "node:path";
+import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import { securityHeaders } from "./middleware/securityHeaders.js";
@@ -70,6 +73,19 @@ app.use("/api/habits", requireAuth, habitsRoutes);
 app.use("/api/*", (req, res) => {
   res.status(404).json({ error: "Endpoint not found" });
 });
+
+// Serve frontend build if dist directory exists (e.g. unified production deployment on Render)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.resolve(__dirname, "../frontend/dist");
+
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(frontendDistPath, "index.html"));
+  });
+}
 
 // Global central error handler
 // eslint-disable-next-line no-unused-vars
