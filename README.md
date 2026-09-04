@@ -82,6 +82,31 @@ npm run dev
 
 Open http://localhost:5173 — sign in with email or click **Continue with Google** to start using Aloft!
 
+## Render Deployment
+
+You can deploy Aloft to [Render](https://render.com) easily using the included Blueprint (`render.yaml`) or as a standard Web Service / Static Site.
+
+### Option A: Render Blueprint (Recommended)
+1. In [Render Dashboard](https://dashboard.render.com), click **New +** > **Blueprint**.
+2. Connect your GitHub repository. Render will automatically detect [`render.yaml`](file:///home/sajinreyans/project/To-do-list/render.yaml).
+3. Fill in the required environment variables:
+   - `SUPABASE_URL`: Your Supabase Project URL (`https://<project-ref>.supabase.co`)
+   - `SUPABASE_ANON_KEY`: Your Supabase Anon/Public API Key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Service Role API Key
+   - `VITE_SUPABASE_URL`: Your Supabase Project URL
+   - `VITE_SUPABASE_ANON_KEY`: Your Supabase Anon/Public API Key
+4. Click **Apply**.
+
+### Option B: Manual Web Service Setup on Render
+1. In Render Dashboard, click **New +** > **Web Service**.
+2. Connect your repository.
+3. Configure settings:
+   - **Runtime**: `Node`
+   - **Build Command**: `npm install --include=dev && npm run build` (or `npm run render-build`)
+   - **Start Command**: `npm start`
+4. Add the environment variables (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+5. Click **Deploy Web Service**.
+
 ## Vercel Deployment
 
 Deploy this entire application (Frontend + Serverless Express Backend) to Vercel in a single project:
@@ -100,7 +125,7 @@ Deploy this entire application (Frontend + Serverless Express Backend) to Vercel
    - `SUPABASE_ANON_KEY`: Your Supabase Anon/Public API Key
    - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Service Role API Key
 5. Click **Deploy**.
-6. In Supabase Dashboard, navigate to *Authentication > URL Configuration > Redirect URLs* and add your Vercel deployment URL (e.g. `https://your-app.vercel.app` and `https://your-app.vercel.app/**`).
+6. In Supabase Dashboard, navigate to *Authentication > URL Configuration > Redirect URLs* and add your deployment URL (e.g. `https://your-app.onrender.com` or `https://your-app.vercel.app`).
 
 ## API overview
 All `/api/*` endpoints (except `/api/health`) require an `Authorization: Bearer <access_token>` header verified against Supabase Auth:
