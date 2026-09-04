@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { supabase } from "../supabase.js";
+import { validateUUIDParam, sanitizeTitle } from "../middleware/validation.js";
 
 const router = Router();
 
@@ -28,16 +29,23 @@ router.get("/", async (req, res) => {
     if (error) throw error;
     res.json((data || []).map(formatTask));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error fetching queue tasks:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to fetch queue tasks" });
   }
 });
 
 // POST create a new queue task (added to the right end)
 router.post("/", async (req, res) => {
-  const { title, deadline } = req.body;
-  if (!title || !title.trim()) {
-    return res.status(400).json({ error: "Title is required" });
+  const title = sanitizeTitle(req.body?.title);
+  if (!title) {
+    return res.status(400).json({ error: "Title is required (maximum 500 characters)" });
   }
+
+  const deadline = typeof req.body.deadline === "string" && req.body.deadline.trim().length <= 50
+    ? req.body.deadline.trim()
+    : null;
 
   const db = req.supabase || supabase;
   try {
@@ -58,8 +66,8 @@ router.post("/", async (req, res) => {
       .from("queue_tasks")
       .insert({
         user_id: req.userId,
-        title: title.trim(),
-        deadline: deadline || null,
+        title,
+        deadline,
         checked: false,
         order: nextOrder,
       })
@@ -69,17 +77,42 @@ router.post("/", async (req, res) => {
     if (error) throw error;
     res.status(201).json(formatTask(data));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error creating queue task:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to create queue task" });
   }
 });
 
 // PATCH update a queue task (toggle checked, edit title/deadline)
-router.patch("/:id", async (req, res) => {
-  const { title, deadline, checked } = req.body;
+router.patch("/:id", validateUUIDParam("id"), async (req, res) => {
   const updates = {};
-  if (title !== undefined) updates.title = title;
-  if (deadline !== undefined) updates.deadline = deadline;
-  if (checked !== undefined) updates.checked = checked;
+  
+  if (req.body.title !== undefined) {
+    const title = sanitizeTitle(req.body.title);
+    if (!title) {
+      return res.status(400).json({ error: "Title cannot be empty (maximum 500 characters)" });
+    }
+    updates.title = title;
+  }
+
+  if (req.body.deadline !== undefined) {
+    updates.deadline =
+      typeof req.body.deadline === "string" && req.body.deadline.trim().length <= 50
+        ? req.body.deadline.trim()
+        : null;
+  }
+
+  if (req.body.checked !== undefined) {
+    if (typeof req.body.checked !== "boolean") {
+      return res.status(400).json({ error: "Checked must be a boolean" });
+    }
+    updates.checked = req.body.checked;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No valid update fields provided" });
+  }
 
   const db = req.supabase || supabase;
   try {
@@ -96,12 +129,15 @@ router.patch("/:id", async (req, res) => {
 
     res.json(formatTask(data));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error updating queue task:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to update queue task" });
   }
 });
 
 // DELETE a queue task
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", validateUUIDParam("id"), async (req, res) => {
   const db = req.supabase || supabase;
   try {
     const { data, error } = await db
@@ -118,7 +154,10 @@ router.delete("/:id", async (req, res) => {
 
     res.status(204).end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error deleting queue task:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to delete queue task" });
   }
 });
 

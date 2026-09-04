@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { supabase } from "../supabase.js";
+import { validateUUIDParam, isValidDate, isValidYear, sanitizeTitle } from "../middleware/validation.js";
 
 const router = Router();
 
@@ -19,10 +20,13 @@ function formatHabit(row) {
 // GET all habits for a specific year (with on-the-fly year rollover)
 router.get("/", async (req, res) => {
   const currentYear = new Date().getFullYear();
-  const year = req.query.year ? parseInt(req.query.year, 10) : currentYear;
+  let year = currentYear;
 
-  if (Number.isNaN(year)) {
-    return res.status(400).json({ error: "Invalid year parameter" });
+  if (req.query.year !== undefined) {
+    if (!isValidYear(req.query.year)) {
+      return res.status(400).json({ error: "Invalid year parameter (must be between 1970 and 2100)" });
+    }
+    year = parseInt(req.query.year, 10);
   }
 
   const db = req.supabase || supabase;
@@ -78,14 +82,24 @@ router.get("/", async (req, res) => {
 
     res.json((habits || []).map(formatHabit));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error fetching habits:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to fetch habits" });
   }
 });
 
 // GET all habit completions for a given year (bulk load)
 router.get("/completions", async (req, res) => {
   const currentYear = new Date().getFullYear();
-  const year = req.query.year ? parseInt(req.query.year, 10) : currentYear;
+  let year = currentYear;
+
+  if (req.query.year !== undefined) {
+    if (!isValidYear(req.query.year)) {
+      return res.status(400).json({ error: "Invalid year parameter (must be between 1970 and 2100)" });
+    }
+    year = parseInt(req.query.year, 10);
+  }
 
   const startDate = `${year}-01-01`;
   const endDate = `${year}-12-31`;
@@ -112,18 +126,37 @@ router.get("/completions", async (req, res) => {
 
     res.json(completionsMap);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error fetching completions:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to fetch habit completions" });
   }
 });
 
 // POST create a new habit
 router.post("/", async (req, res) => {
-  const { title, color, icon, year } = req.body;
-  if (!title || !title.trim()) {
-    return res.status(400).json({ error: "Title is required" });
+  const title = sanitizeTitle(req.body?.title, 200);
+  if (!title) {
+    return res.status(400).json({ error: "Title is required (maximum 200 characters)" });
   }
 
-  const targetYear = year ? parseInt(year, 10) : new Date().getFullYear();
+  let targetYear = new Date().getFullYear();
+  if (req.body?.year !== undefined) {
+    if (!isValidYear(req.body.year)) {
+      return res.status(400).json({ error: "Invalid year (must be between 1970 and 2100)" });
+    }
+    targetYear = parseInt(req.body.year, 10);
+  }
+
+  const color =
+    typeof req.body?.color === "string" && req.body.color.trim().length <= 30
+      ? req.body.color.trim()
+      : null;
+
+  const icon =
+    typeof req.body?.icon === "string" && req.body.icon.trim().length <= 30
+      ? req.body.icon.trim()
+      : null;
 
   const db = req.supabase || supabase;
   try {
@@ -131,9 +164,9 @@ router.post("/", async (req, res) => {
       .from("habits")
       .insert({
         user_id: req.userId,
-        title: title.trim(),
-        color: color || null,
-        icon: icon || null,
+        title,
+        color,
+        icon,
         year: targetYear,
         archived: false,
       })
@@ -143,18 +176,49 @@ router.post("/", async (req, res) => {
     if (error) throw error;
     res.status(201).json(formatHabit(data));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error creating habit:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to create habit" });
   }
 });
 
 // PATCH update habit (title, color, icon, archived)
-router.patch("/:id", async (req, res) => {
-  const { title, color, icon, archived } = req.body;
+router.patch("/:id", validateUUIDParam("id"), async (req, res) => {
   const updates = {};
-  if (title !== undefined) updates.title = title.trim();
-  if (color !== undefined) updates.color = color;
-  if (icon !== undefined) updates.icon = icon;
-  if (archived !== undefined) updates.archived = archived;
+  
+  if (req.body?.title !== undefined) {
+    const title = sanitizeTitle(req.body.title, 200);
+    if (!title) {
+      return res.status(400).json({ error: "Title cannot be empty (maximum 200 characters)" });
+    }
+    updates.title = title;
+  }
+
+  if (req.body?.color !== undefined) {
+    updates.color =
+      typeof req.body.color === "string" && req.body.color.trim().length <= 30
+        ? req.body.color.trim()
+        : null;
+  }
+
+  if (req.body?.icon !== undefined) {
+    updates.icon =
+      typeof req.body.icon === "string" && req.body.icon.trim().length <= 30
+        ? req.body.icon.trim()
+        : null;
+  }
+
+  if (req.body?.archived !== undefined) {
+    if (typeof req.body.archived !== "boolean") {
+      return res.status(400).json({ error: "Archived must be a boolean" });
+    }
+    updates.archived = req.body.archived;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ error: "No valid update fields provided" });
+  }
 
   const db = req.supabase || supabase;
   try {
@@ -171,12 +235,15 @@ router.patch("/:id", async (req, res) => {
 
     res.json(formatHabit(data));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error updating habit:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to update habit" });
   }
 });
 
 // DELETE habit
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", validateUUIDParam("id"), async (req, res) => {
   const db = req.supabase || supabase;
   try {
     const { data, error } = await db
@@ -193,19 +260,41 @@ router.delete("/:id", async (req, res) => {
 
     res.status(204).end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error deleting habit:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to delete habit" });
   }
 });
 
 // GET completions for a single habit
-router.get("/:id/completions", async (req, res) => {
+router.get("/:id/completions", validateUUIDParam("id"), async (req, res) => {
   const currentYear = new Date().getFullYear();
-  const year = req.query.year ? parseInt(req.query.year, 10) : currentYear;
+  let year = currentYear;
+
+  if (req.query.year !== undefined) {
+    if (!isValidYear(req.query.year)) {
+      return res.status(400).json({ error: "Invalid year parameter (must be between 1970 and 2100)" });
+    }
+    year = parseInt(req.query.year, 10);
+  }
+
   const startDate = `${year}-01-01`;
   const endDate = `${year}-12-31`;
 
   const db = req.supabase || supabase;
   try {
+    // Verify habit ownership
+    const { data: habit, error: habitError } = await db
+      .from("habits")
+      .select("id")
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId)
+      .maybeSingle();
+
+    if (habitError) throw habitError;
+    if (!habit) return res.status(404).json({ error: "Habit not found" });
+
     const { data, error } = await db
       .from("habit_completions")
       .select("date, completed")
@@ -223,21 +312,37 @@ router.get("/:id/completions", async (req, res) => {
 
     res.json(map);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error fetching habit completions:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to fetch habit completions" });
   }
 });
 
 // PATCH toggle or set completion for a specific habit and date
-router.patch("/:id/completions", async (req, res) => {
-  const { date, completed } = req.body;
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return res.status(400).json({ error: "Valid date (YYYY-MM-DD) is required" });
+router.patch("/:id/completions", validateUUIDParam("id"), async (req, res) => {
+  const { date, completed } = req.body || {};
+  if (!isValidDate(date)) {
+    return res.status(400).json({ error: "Valid date in YYYY-MM-DD format is required" });
   }
 
-  const isCompleted = completed !== undefined ? Boolean(completed) : true;
+  const isCompleted = typeof completed === "boolean" ? completed : true;
 
   const db = req.supabase || supabase;
   try {
+    // IDOR Prevention: Verify that the habit exists and belongs to the authenticated user
+    const { data: habit, error: habitCheckError } = await db
+      .from("habits")
+      .select("id")
+      .eq("id", req.params.id)
+      .eq("user_id", req.userId)
+      .maybeSingle();
+
+    if (habitCheckError) throw habitCheckError;
+    if (!habit) {
+      return res.status(404).json({ error: "Habit not found or access denied" });
+    }
+
     const { data, error } = await db
       .from("habit_completions")
       .upsert(
@@ -255,7 +360,10 @@ router.patch("/:id/completions", async (req, res) => {
     if (error) throw error;
     res.json({ date: data.date, completed: data.completed });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error updating habit completion:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to update habit completion" });
   }
 });
 

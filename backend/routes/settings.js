@@ -28,20 +28,23 @@ router.get("/", async (req, res) => {
     if (error) throw error;
     res.json({ theme: data?.theme || DEFAULT_THEME });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error fetching settings:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to fetch settings" });
   }
 });
 
 // PATCH update user settings
 router.patch("/", async (req, res) => {
-  const { theme } = req.body;
-  if (theme && !VALID_THEMES.includes(theme)) {
-    return res.status(400).json({ error: "Unknown theme" });
+  const { theme } = req.body || {};
+  if (theme !== undefined && (typeof theme !== "string" || !VALID_THEMES.includes(theme))) {
+    return res.status(400).json({ error: `Invalid theme. Must be one of: ${VALID_THEMES.join(", ")}` });
   }
 
+  const newTheme = theme || DEFAULT_THEME;
   const db = req.supabase || supabase;
   try {
-    const newTheme = theme || DEFAULT_THEME;
     const { data, error } = await db
       .from("user_settings")
       .upsert(
@@ -58,7 +61,10 @@ router.patch("/", async (req, res) => {
     if (error) throw error;
     res.json({ theme: data?.theme || newTheme });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error updating settings:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to update settings" });
   }
 });
 

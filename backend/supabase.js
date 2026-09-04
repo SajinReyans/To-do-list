@@ -1,3 +1,8 @@
+// Compatibility shim for Node.js < 22 environments where native WebSocket is not present globally
+if (typeof globalThis.WebSocket === "undefined") {
+  globalThis.WebSocket = class WebSocket {};
+}
+
 import { createClient } from "@supabase/supabase-js";
 import "dotenv/config";
 
@@ -7,14 +12,15 @@ export const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 export const supabaseAnonKey =
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
   "";
 
 if (!supabaseUrl || (!supabaseServiceKey && !supabaseAnonKey)) {
-  console.warn("Warning: Supabase URL or keys are not set in backend environment variables.");
+  if (process.env.NODE_ENV !== "test") {
+    console.warn("Warning: Supabase URL or keys are not set in backend environment variables.");
+  }
 }
 
-// Base admin/auth client
+// Base admin/auth client (used strictly for server-side auth operations such as token verification)
 export const supabase = createClient(
   supabaseUrl || "https://placeholder.supabase.co",
   supabaseServiceKey || supabaseAnonKey || "placeholder-key",
@@ -26,16 +32,17 @@ export const supabase = createClient(
   }
 );
 
-// Returns a client configured with user's access token so PostgREST passes auth.uid() to Postgres RLS
+/**
+ * Returns a Supabase client configured with the authenticated user's access token.
+ * This ensures PostgREST forwards auth.uid() to PostgreSQL, strictly enforcing Row Level Security (RLS).
+ */
 export function getSupabaseForUser(token) {
-  if (supabaseServiceKey) {
-    // If Service Role Key is configured, use admin client
-    return supabase;
-  }
-  // If only Anon Key is available, pass user JWT so RLS policy auth.uid() = user_id matches
+  // Use anon key for user-scoped PostgREST requests so Postgres RLS policies (auth.uid() = user_id) are enforced
+  const apiKey = supabaseAnonKey || supabaseServiceKey || "placeholder-key";
+
   return createClient(
     supabaseUrl || "https://placeholder.supabase.co",
-    supabaseAnonKey || "placeholder-key",
+    apiKey,
     {
       auth: {
         persistSession: false,

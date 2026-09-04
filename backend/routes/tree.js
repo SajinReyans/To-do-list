@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { supabase } from "../supabase.js";
+import { validateUUIDParam, isValidUUID, sanitizeTitle } from "../middleware/validation.js";
 
 const router = Router();
 
@@ -68,19 +69,47 @@ router.get("/", async (req, res) => {
     const formatted = (data || []).map(formatNode);
     res.json(buildTree(formatted, null));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error fetching tree:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to fetch tree nodes" });
   }
 });
 
 // POST create a node (group or task). parentId null = root group.
 router.post("/", async (req, res) => {
-  const { title, parentId, deadline } = req.body;
-  if (!title || !title.trim()) {
-    return res.status(400).json({ error: "Title is required" });
+  const title = sanitizeTitle(req.body?.title);
+  if (!title) {
+    return res.status(400).json({ error: "Title is required (maximum 500 characters)" });
   }
+
+  const parentId = req.body?.parentId || null;
+  if (parentId !== null && !isValidUUID(parentId)) {
+    return res.status(400).json({ error: "Invalid parentId format: must be a valid UUID" });
+  }
+
+  const deadline =
+    typeof req.body?.deadline === "string" && req.body.deadline.trim().length <= 50
+      ? req.body.deadline.trim()
+      : null;
 
   const db = req.supabase || supabase;
   try {
+    // IDOR Prevention: If parentId is provided, verify it exists and belongs to the authenticated user
+    if (parentId) {
+      const { data: parentNode, error: parentCheckError } = await db
+        .from("tree_nodes")
+        .select("id")
+        .eq("id", parentId)
+        .eq("user_id", req.userId)
+        .maybeSingle();
+
+      if (parentCheckError) throw parentCheckError;
+      if (!parentNode) {
+        return res.status(404).json({ error: "Parent node not found or access denied" });
+      }
+    }
+
     // Find max order among siblings
     let query = db
       .from("tree_nodes")
@@ -106,9 +135,9 @@ router.post("/", async (req, res) => {
       .from("tree_nodes")
       .insert({
         user_id: req.userId,
-        title: title.trim(),
-        parent_id: parentId || null,
-        deadline: deadline || null,
+        title,
+        parent_id: parentId,
+        deadline,
         checked: false,
         order: nextOrder,
       })
@@ -118,12 +147,15 @@ router.post("/", async (req, res) => {
     if (error) throw error;
     res.status(201).json(formatNode(data));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error creating tree node:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to create tree node" });
   }
 });
 
 // PATCH update a node. Setting `checked` cascades to descendants + bubbles up.
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", validateUUIDParam("id"), async (req, res) => {
   const db = req.supabase || supabase;
   try {
     const { data: rows, error: fetchError } = await db
@@ -137,12 +169,29 @@ router.patch("/:id", async (req, res) => {
     const targetNode = nodes.find((n) => n.id === req.params.id);
     if (!targetNode) return res.status(404).json({ error: "Node not found" });
 
-    const { title, deadline, checked } = req.body;
-    if (title !== undefined) targetNode.title = title;
-    if (deadline !== undefined) targetNode.deadline = deadline;
-    if (checked !== undefined) cascade(nodes, targetNode.id, checked);
+    const { title, deadline, checked } = req.body || {};
 
-    // Identify changed nodes to update in Supabase
+    if (title !== undefined) {
+      const sanitized = sanitizeTitle(title);
+      if (!sanitized) {
+        return res.status(400).json({ error: "Title cannot be empty (maximum 500 characters)" });
+      }
+      targetNode.title = sanitized;
+    }
+
+    if (deadline !== undefined) {
+      targetNode.deadline =
+        typeof deadline === "string" && deadline.trim().length <= 50 ? deadline.trim() : null;
+    }
+
+    if (checked !== undefined) {
+      if (typeof checked !== "boolean") {
+        return res.status(400).json({ error: "Checked must be a boolean" });
+      }
+      cascade(nodes, targetNode.id, checked);
+    }
+
+    // Identify changed nodes to update in database
     const originalMap = new Map((rows || []).map((r) => [r.id, formatNode(r)]));
     const updates = nodes.filter((n) => {
       const orig = originalMap.get(n.id);
@@ -150,7 +199,7 @@ router.patch("/:id", async (req, res) => {
     });
 
     for (const n of updates) {
-      await db
+      const { error: updateError } = await db
         .from("tree_nodes")
         .update({
           title: n.title,
@@ -159,16 +208,21 @@ router.patch("/:id", async (req, res) => {
         })
         .eq("id", n.id)
         .eq("user_id", req.userId);
+
+      if (updateError) throw updateError;
     }
 
     res.json(buildTree(nodes, null));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error updating tree node:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to update tree node" });
   }
 });
 
 // DELETE a node and all its descendants
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", validateUUIDParam("id"), async (req, res) => {
   const db = req.supabase || supabase;
   try {
     const { data: rows, error: fetchError } = await db
@@ -218,7 +272,10 @@ router.delete("/:id", async (req, res) => {
 
     res.json(buildTree(remainingNodes, null));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (process.env.NODE_ENV !== "test") {
+      console.error(`[${new Date().toISOString()}] Error deleting tree node:`, err.message);
+    }
+    res.status(500).json({ error: "Failed to delete tree node" });
   }
 });
 
