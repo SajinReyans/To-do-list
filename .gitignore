@@ -1,60 +1,138 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+# ==============================================================================
+# Git Ignore Configuration for Aloft To-Do List Application
+# ==============================================================================
 
-# Environment & Secrets (Never commit credentials)
+# ------------------------------------------------------------------------------
+# 1. Environment & Secrets (Never commit credentials)
+# ------------------------------------------------------------------------------
 .env
 .env.*
 *.env
 **/.env
 **/.env.*
-!.env.example
-!**/.env.example
-*.local
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env.staging
+.env.staging.local
+.env.vault
+*.env.vault
 
-# API Keys, Certificates & Tokens
-*.pem
-*.key
-*.cert
-*.crt
-*.pfx
-*.p12
-*.pkcs12
+# Explicitly preserve example files
+!.env.example
+!**/.env.example
+!*.env.example
+
+# ------------------------------------------------------------------------------
+# 2. Cloud Provider & Service Credentials
+# ------------------------------------------------------------------------------
 credentials.json
 client_secret*.json
+client_secrets*.json
 serviceAccountKey*.json
-firebase-adminsdk*.json
+service-account*.json
+*-service-account.json
 *-credentials.json
+firebase-adminsdk*.json
+gcp-key*.json
+google-services.json
+GoogleService-Info.plist
+.aws/
+.azure/
+.gcloud/
+.netlify/
+.vercel/
+.serverless/
+.turbo/
 
-# Local Databases, Dumps & Storage
-backend/data/
-*.sqlite
-*.sqlite3
-*.db
-*.dump
-*.bak
+# ------------------------------------------------------------------------------
+# 3. API Keys, Private Keys, Certificates & SSL
+# ------------------------------------------------------------------------------
+*.pem
+*.key
+*.pkcs12
+*.pfx
+*.p12
+*.crt
+*.cer
+*.cert
+*.der
+*.csr
+*.kdb
+*.jks
+*.keystore
+id_rsa
+id_rsa.pub
+id_dsa
+id_ed25519
+id_ecdsa
+*.pub
+*.gpg
+*.asc
+secring.gpg
+pubring.gpg
 
-# Build outputs
+# ------------------------------------------------------------------------------
+# 4. Authentication, Tokens & Package Registry Configs
+# ------------------------------------------------------------------------------
+.npmrc
+.yarnrc
+.yarnrc.yml
+.dockercfg
+.docker/config.json
+token.json
+tokens.json
+auth*.json
+session*.json
+jwt_secret*
+
+# ------------------------------------------------------------------------------
+# 5. Dependencies
+# ------------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.js
+
+# ------------------------------------------------------------------------------
+# 6. Build Outputs & Compilation Caches
+# ------------------------------------------------------------------------------
 dist/
 dist-ssr/
 build/
 frontend/build/
+frontend/dist/
 out/
 .next/
-
-# Vite, Turbo & Build Caches
 .vite/
-.turbo/
 .cache/
 .eslintcache
 .stylelintcache
+*.tsbuildinfo
 
-# Logs
+# ------------------------------------------------------------------------------
+# 7. Local Databases, Dumps & Storage
+# ------------------------------------------------------------------------------
+backend/data/
+data/
+*.sqlite
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.db
+*.db-journal
+*.db-wal
+*.dump
+*.sql.gz
+*.sql.tar
+*.backup
+*.bak
+dump.rdb
+*.rdb
+
+# ------------------------------------------------------------------------------
+# 8. Logs & Diagnostic Traces
+# ------------------------------------------------------------------------------
 logs/
 *.log
 npm-debug.log*
@@ -62,8 +140,20 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+.node_repl_history
+.bash_history
+.zsh_history
 
-# OS & Editor files
+# ------------------------------------------------------------------------------
+# 9. Test Coverage & Reports
+# ------------------------------------------------------------------------------
+coverage/
+.nyc_output/
+reports/
+
+# ------------------------------------------------------------------------------
+# 10. OS & Editor / IDE Metadata
+# ------------------------------------------------------------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -74,9 +164,15 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+!.vscode/launch.json
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 *.tmp
+*.temp
+.dbeaver/
+.postman/
+*.sublime-project
+*.sublime-workspace
