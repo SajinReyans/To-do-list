@@ -102,15 +102,3 @@ You can deploy Aloft to [Render](https://render.com) easily using the included B
 ### Option B: Manual Web Service Setup on Render
 1. In Render Dashboard, click **New +** > **Web Service**.
 2. Connect your repository.
-3. Configure settings:
-   - **Runtime**: `Node`
-   - **Build Command**: `npm install --include=dev && npm run build` (or `npm run render-build`)
-   - **Start Command**: `npm start`
-4. Add the environment variables (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
-5. Click **Deploy Web Service**.
-
-## Vercel Deployment
-
-Deploy this entire application (Frontend + Serverless Express Backend) to Vercel in a single project:
-
-1. Push this repository to GitHub / GitLab / Bitbucket.
