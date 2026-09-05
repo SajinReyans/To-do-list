@@ -85,20 +85,3 @@ Open http://localhost:5173 — sign in with email or click **Continue with Googl
 ## Render Deployment
 
 For a complete step-by-step walkthrough, see [`RENDER_DEPLOYMENT.md`](RENDER_DEPLOYMENT.md).
-
-You can deploy Aloft to [Render](https://render.com) easily using the included Blueprint (`render.yaml`) or as a standard Web Service.
-
-### Option A: Render Blueprint (Recommended)
-1. In [Render Dashboard](https://dashboard.render.com), click **New +** > **Blueprint**.
-2. Connect your GitHub repository. Render will automatically detect [`render.yaml`](file:///home/sajinreyans/project/To-do-list/render.yaml).
-3. Fill in the required environment variables:
-   - `SUPABASE_URL`: Your Supabase Project URL (`https://<project-ref>.supabase.co`)
-   - `SUPABASE_ANON_KEY`: Your Supabase Anon/Public API Key
-   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase Service Role API Key
-   - `VITE_SUPABASE_URL`: Your Supabase Project URL
-   - `VITE_SUPABASE_ANON_KEY`: Your Supabase Anon/Public API Key
-4. Click **Apply**.
-
-### Option B: Manual Web Service Setup on Render
-1. In Render Dashboard, click **New +** > **Web Service**.
-2. Connect your repository.
