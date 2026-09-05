@@ -61,21 +61,4 @@ aloft-todo-app/
 ## Year Rollover Mechanism
 Habits are defined per-year (`year` column in `habits` table) to maintain distinct annual progress records:
 - When a user views the current year in the Habits Tracker, the backend automatically checks if active habits exist from the previous year.
-- If previous active habits exist and the current year has no habits yet, they are automatically carried over on-the-fly to the current year with empty completion grids.
-- Historical years remain intact and can be explored at any time via the Year Selector.
-
-## Run it
-
-**Backend** (http://localhost:4000):
-```bash
-cd backend
-npm install
-npm start
-```
-
-**Frontend** (http://localhost:5173):
-```bash
-
-3. Configure settings:
-   - **Runtime**: `Node`
-   - **Build Command**: `npm install --include=dev && npm run build` (or `npm run render-build`)
+\
