@@ -18,11 +18,7 @@ Node.js/Express backend + React/Tailwind frontend powered by **Supabase Authenti
 ```
 aloft-todo-app/
   api/                Vercel Serverless Function entry point (api/index.js)
-  backend/            Express API with Supabase Auth verification & DB queries
-  frontend/           React + Vite + Tailwind CSS with Supabase AuthContext & AuthScreen
-  supabase/           Database schema and migrations
-    schema.sql        Full database schema, indexes, and RLS policies
-    migrations/       Timestamped migrations for Supabase CLI
+  backend/            Express API with Sup
   vercel.json         Vercel deployment configuration
 ```
 
