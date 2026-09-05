@@ -49,39 +49,3 @@ aloft-todo-app/
    PORT=4000
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_ANON_KEY=your-anon-key
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   ```
-
-   In `frontend/.env`:
-   ```bash
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key
-   ```
-
-## Year Rollover Mechanism
-Habits are defined per-year (`year` column in `habits` table) to maintain distinct annual progress records:
-- When a user views the current year in the Habits Tracker, the backend automatically checks if active habits exist from the previous year.
-- If previous active habits exist and the current year has no habits yet, they are automatically carried over on-the-fly to the current year with empty completion grids.
-- Historical years remain intact and can be explored at any time via the Year Selector.
-
-## Run it
-
-**Backend** (http://localhost:4000):
-```bash
-cd backend
-npm install
-npm start
-```
-
-**Frontend** (http://localhost:5173):
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Open http://localhost:5173 — sign in with email or click **Continue with Google** to start using Aloft!
-
-## Render Deployment
-
-For a complete step-by-step walkthrough, see [`RENDER_DEPLOYMENT.md`](RENDER_DEPLOYMENT.md).
