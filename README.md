@@ -24,7 +24,4 @@ Node.js/Express backend + React/Tailwind frontend powered by **Supabase Authenti
    - **Option B (Supabase CLI)**: Run `supabase db push` or apply the SQL files in `supabase/migrations/`.
 
 3. **Configure Google OAuth (Optional for Direct Google Sign-In)**:
-   - Create OAuth 2.0 Credentials (Client ID & Secret) in the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
-   - In Google Cloud Console, set the Authorized Redirect URI to: `https://<YOUR-PROJECT-REF>.supabase.co/auth/v1/callback`.
-   - In Supabase Dashboard: Go to *Authentication > Providers > Google*, enable it, and enter your Client ID and Client Secret.
-   - U
+   - Create OAuth 2.0 Credentials (Client ID & Secret) in the [Google Cloud Console](https://console.cloud.
