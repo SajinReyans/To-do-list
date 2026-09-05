@@ -12,16 +12,7 @@ Node.js/Express backend + React/Tailwind frontend powered by **Supabase Authenti
 - **Settings** — switch the whole app's color theme per-user, including:
   - **Cotton Candy** (the default): `#ffcbcb #ffa7a7 #c9fdff #dffeff #fff4f4`
   - **Black & White** — a strictly monochrome, no-neon palette
-  - 5 custom palettes: Sunset Ember, Royal Violet, Electric Sky, Mauve Berry, Tropical Pop
-
-## Project structure
-```
-aloft-todo-app/
-  api/                Vercel Serverless Function entry point (api/index.js)
-  backend/            Express API with Sup
-  vercel.json         Vercel deployment configuration
-```
-
+  - 5 custom pal
 ## Supabase Setup & Database Migration
 
 1. **Create a Supabase Project**:
