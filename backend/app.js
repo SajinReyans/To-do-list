@@ -20,27 +20,59 @@ app.disable("x-powered-by");
 // Apply standard security HTTP headers
 app.use(securityHeaders);
 
-// Restrictive CORS configuration
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-  : ["http://localhost:5173", "http://localhost:4000", "http://localhost:3000"];
+// Restrictive and Render-friendly CORS configuration
+const configuredOrigins = [
+  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(",") : []),
+  ...(process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(",") : []),
+  ...(process.env.RENDER_EXTERNAL_URL ? [process.env.RENDER_EXTERNAL_URL] : []),
+]
+  .map((o) => o.trim())
+  .filter(Boolean);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (such as mobile apps, curl, server-to-server) or in whitelist
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS policy violation: origin not allowed"));
-      }
-    },
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-    maxAge: 86400,
-  })
-);
+const defaultDevOrigins = [
+  "http://localhost:5173",
+  "http://localhost:4000",
+  "http://localhost:3000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:4000",
+];
+
+const isAllowedOrigin = (origin) => {
+  // Allow requests with no origin (such as mobile apps, curl, server-to-server, same-origin)
+  if (!origin) return true;
+
+  // Wildcard allowed
+  if (configuredOrigins.includes("*")) return true;
+
+  // Explicitly configured origins (including custom domains or FRONTEND_URL)
+  if (configuredOrigins.includes(origin)) return true;
+
+  // Automatically allow any Render deployment origin (e.g. https://<app>.onrender.com)
+  if (origin.endsWith(".onrender.com") && (origin.startsWith("https://") || origin.startsWith("http://"))) {
+    return true;
+  }
+
+  // Allow local development origins
+  if (defaultDevOrigins.includes(origin)) return true;
+
+  return false;
+};
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS policy violation: origin ${origin} not allowed`));
+    }
+  },
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  maxAge: 86400,
+};
+
+app.use(cors(corsOptions));
 
 // Protect against oversized payload attacks
 app.use(express.json({ limit: "50kb" }));

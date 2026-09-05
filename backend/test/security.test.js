@@ -225,3 +225,40 @@ describe("7. Validation Helper Unit Tests", () => {
     assert.equal(sanitizeTitle("Valid title", 500), "Valid title");
   });
 });
+
+describe("8. CORS Origin Security & Render Support", () => {
+  test("allows requests from Render deployment origins (*.onrender.com)", async () => {
+    const renderOrigin = "https://aloft-todo-frontend.onrender.com";
+    const res = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: renderOrigin },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("access-control-allow-origin"), renderOrigin);
+  });
+
+  test("handles OPTIONS preflight for Render origins with appropriate methods", async () => {
+    const renderOrigin = "https://aloft-todo-frontend.onrender.com";
+    const res = await fetch(`${baseUrl}/api/health`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: renderOrigin,
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+    assert.ok(res.status === 200 || res.status === 204);
+    assert.equal(res.headers.get("access-control-allow-origin"), renderOrigin);
+    assert.ok(res.headers.get("access-control-allow-methods").includes("GET"));
+  });
+
+  test("rejects unauthorized external origin with CORS policy violation", async () => {
+    const maliciousOrigin = "https://unauthorized-evil-attacker.example.com";
+    const res = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: maliciousOrigin },
+    });
+    // In our central error handler, CORS policy error returns 500
+    assert.equal(res.status, 500);
+    const body = await res.json();
+    assert.ok(body.error);
+  });
+});
+

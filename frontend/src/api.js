@@ -1,6 +1,9 @@
 import { supabase } from "./supabaseClient.js";
 
-const BASE = "/api";
+const rawApiUrl = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const BASE = rawApiUrl
+  ? (rawApiUrl.endsWith("/api") ? rawApiUrl : `${rawApiUrl}/api`)
+  : "/api";
 
 async function request(path, options = {}) {
   // Retrieve token from Supabase session for each request (auto-refreshed by Supabase client)

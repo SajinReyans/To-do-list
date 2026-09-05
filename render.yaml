@@ -1,18 +1,37 @@
 services:
+  # Backend API Web Service (Node.js/Express)
   - type: web
-    name: aloft-todo-app
+    name: aloft-backend
     runtime: node
     plan: free
-    buildCommand: npm install --include=dev && npm run build
-    startCommand: npm start
+    buildCommand: npm install --prefix backend
+    startCommand: npm run start --prefix backend
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+
+  # Frontend Static Site (React + Vite SPA)
+  - type: web
+    name: aloft-frontend
+    runtime: static
+    buildCommand: npm install --prefix frontend && npm run build --prefix frontend
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
         sync: false
       - key: VITE_SUPABASE_URL
         sync: false

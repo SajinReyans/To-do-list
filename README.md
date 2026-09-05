@@ -84,7 +84,9 @@ Open http://localhost:5173 — sign in with email or click **Continue with Googl
 
 ## Render Deployment
 
-You can deploy Aloft to [Render](https://render.com) easily using the included Blueprint (`render.yaml`) or as a standard Web Service / Static Site.
+For a complete step-by-step walkthrough, see [`RENDER_DEPLOYMENT.md`](RENDER_DEPLOYMENT.md).
+
+You can deploy Aloft to [Render](https://render.com) easily using the included Blueprint (`render.yaml`) or as a standard Web Service.
 
 ### Option A: Render Blueprint (Recommended)
 1. In [Render Dashboard](https://dashboard.render.com), click **New +** > **Blueprint**.
