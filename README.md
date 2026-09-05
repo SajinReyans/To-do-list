@@ -111,13 +111,4 @@ You can deploy Aloft to [Render](https://render.com) easily using the included B
 
 ## Vercel Deployment
 
-Deploy this entire application (Frontend + Serverless Express Backend) to Vercel in a single project:
-
-1. Push this repository to GitHub / GitLab / Bitbucket.
-2. In [Vercel Dashboard](https://vercel.com/new), click **Add New Project** and import this repository.
-3. Keep the default settings:
-   - **Framework Preset**: Vite (or Other)
-   - **Root Directory**: `./` (leave as project root)
-   - **Build Command**: `npm run build --prefix frontend` (automatically configured by `vercel.json`)
-   - **Output Directory**: `frontend/dist` (automatically configured by `vercel.json`)
-4. Add the following **Environment Variab
+Deploy this entire application (Frontend + Serverless Express Backend) to Vercel in 
