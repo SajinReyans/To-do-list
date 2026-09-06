@@ -11,7 +11,7 @@ import {
   addMonths,
   subMonths,
 } from "date-fns";
-import { getTodayTasks, getQueueTasks, getTree } from "../api.js";
+import { getQueueTasks, getTree } from "../api.js";
 
 function flattenTree(nodes) {
   let out = [];
@@ -29,15 +29,13 @@ export default function CalendarView() {
 
   useEffect(() => {
     Promise.all([
-      getTodayTasks().catch(() => []),
       getQueueTasks().catch(() => []),
       getTree().catch(() => []),
     ])
-      .then(([today, queue, tree]) => {
-        const flatToday = (today || []).map((t) => ({ ...t, deadline: t.date, source: "Today" }));
+      .then(([queue, tree]) => {
         const flatQueue = (queue || []).map((t) => ({ ...t, source: "Queue" }));
         const flatTree = flattenTree(tree || []).map((n) => ({ ...n, source: "Tree" }));
-        setItems([...flatToday, ...flatQueue, ...flatTree].filter((t) => t.deadline));
+        setItems([...flatQueue, ...flatTree].filter((t) => t.deadline));
       })
       .catch(() => {});
   }, []);

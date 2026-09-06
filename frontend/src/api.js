@@ -51,13 +51,8 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-// Today (dedicated daily tasks with priorities & status)
-export const getTodayTasks = (date) => request(`/today${date ? `?date=${encodeURIComponent(date)}` : ""}`);
-export const createTodayTask = (data) => request("/today", { method: "POST", body: JSON.stringify(data) });
-export const updateTodayTask = (id, data) => request(`/today/${id}`, { method: "PATCH", body: JSON.stringify(data) });
-export const deleteTodayTask = (id) => request(`/today/${id}`, { method: "DELETE" });
-
 // Queue (one-day tasks)
+
 export const getQueueTasks = () => request("/queue");
 export const createQueueTask = (data) => request("/queue", { method: "POST", body: JSON.stringify(data) });
 export const updateQueueTask = (id, data) => request(`/queue/${id}`, { method: "PATCH", body: JSON.stringify(data) });

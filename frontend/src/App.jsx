@@ -2,7 +2,6 @@ import { useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import AuthScreen from "./components/AuthScreen.jsx";
-import TodayView from "./components/TodayView.jsx";
 import QueueBoard from "./components/QueueBoard.jsx";
 import TreeView from "./components/TreeView.jsx";
 import CalendarView from "./components/CalendarView.jsx";
@@ -10,7 +9,6 @@ import HabitsTracker from "./components/HabitsTracker.jsx";
 import SettingsPanel from "./components/SettingsPanel.jsx";
 
 const TABS = [
-  { id: "today", label: "Today" },
   { id: "queue", label: "Queue" },
   { id: "tree", label: "Tree" },
   { id: "calendar", label: "Calendar" },
@@ -19,7 +17,7 @@ const TABS = [
 ];
 
 function Shell() {
-  const [tab, setTab] = useState("today");
+  const [tab, setTab] = useState("queue");
   const { user, signOut } = useAuth();
 
   return (
@@ -89,9 +87,6 @@ function Shell() {
         </nav>
 
         <main>
-          <div className={tab === "today" ? "block" : "hidden"}>
-            <TodayView />
-          </div>
           <div className={tab === "queue" ? "block" : "hidden"}>
             <QueueBoard />
           </div>
@@ -112,7 +107,6 @@ function Shell() {
     </div>
   );
 }
-
 
 function MainContent() {
   const { session, loading, user } = useAuth();
