@@ -41,3 +41,10 @@ export function sanitizeTitle(title, maxLen = 500) {
   if (!trimmed || trimmed.length > maxLen) return null;
   return trimmed;
 }
+
+export const VALID_PRIORITIES = ["high", "medium", "low", "none"];
+
+export function isValidPriority(priority) {
+  return typeof priority === "string" && VALID_PRIORITIES.includes(priority.toLowerCase());
+}
+

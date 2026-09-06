@@ -8,9 +8,11 @@ import { securityHeaders } from "./middleware/securityHeaders.js";
 import { createRateLimiter } from "./middleware/rateLimit.js";
 import { requireAuth } from "./middleware/auth.js";
 import queueRoutes from "./routes/queue.js";
+import todayRoutes from "./routes/today.js";
 import treeRoutes from "./routes/tree.js";
 import settingsRoutes from "./routes/settings.js";
 import habitsRoutes from "./routes/habits.js";
+
 
 const app = express();
 
@@ -96,10 +98,12 @@ app.use("/api", apiLimiter);
 app.get("/api/health", (req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }));
 
 // Protected endpoints requiring valid Supabase user JWT
+app.use("/api/today", requireAuth, todayRoutes);
 app.use("/api/queue", requireAuth, queueRoutes);
 app.use("/api/tree", requireAuth, treeRoutes);
 app.use("/api/settings", requireAuth, settingsRoutes);
 app.use("/api/habits", requireAuth, habitsRoutes);
+
 
 // 404 handler for unmatched API routes
 app.use("/api/*", (req, res) => {

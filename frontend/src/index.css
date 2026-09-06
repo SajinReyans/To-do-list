@@ -16,19 +16,37 @@
   --border: #ffcbcb;
 }
 
-* {
-  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
-}
-
 body {
   background-color: var(--bg);
   color: var(--text);
   font-family: 'Inter', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent unwanted wildcard transition performance degradation while allowing smooth theme changes on root */
+#root {
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* Hide scrollbar for clean touch carousels and tab bars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Ensure inputs never trigger iOS Safari auto-zoom on focus */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 ::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+  height: 6px;
+  width: 6px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--accent);
@@ -37,3 +55,4 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+

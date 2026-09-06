@@ -198,18 +198,22 @@ router.patch("/:id", validateUUIDParam("id"), async (req, res) => {
       return orig && (orig.checked !== n.checked || orig.title !== n.title || orig.deadline !== n.deadline);
     });
 
-    for (const n of updates) {
-      const { error: updateError } = await db
-        .from("tree_nodes")
-        .update({
-          title: n.title,
-          deadline: n.deadline,
-          checked: n.checked,
-        })
-        .eq("id", n.id)
-        .eq("user_id", req.userId);
-
-      if (updateError) throw updateError;
+    if (updates.length > 0) {
+      const results = await Promise.all(
+        updates.map((n) =>
+          db
+            .from("tree_nodes")
+            .update({
+              title: n.title,
+              deadline: n.deadline,
+              checked: n.checked,
+            })
+            .eq("id", n.id)
+            .eq("user_id", req.userId)
+        )
+      );
+      const firstErr = results.find((r) => r && r.error)?.error;
+      if (firstErr) throw firstErr;
     }
 
     res.json(buildTree(nodes, null));
@@ -261,12 +265,16 @@ router.delete("/:id", validateUUIDParam("id"), async (req, res) => {
         return orig && orig.checked !== n.checked;
       });
 
-      for (const n of parentUpdates) {
-        await db
-          .from("tree_nodes")
-          .update({ checked: n.checked })
-          .eq("id", n.id)
-          .eq("user_id", req.userId);
+      if (parentUpdates.length > 0) {
+        await Promise.all(
+          parentUpdates.map((n) =>
+            db
+              .from("tree_nodes")
+              .update({ checked: n.checked })
+              .eq("id", n.id)
+              .eq("user_id", req.userId)
+          )
+        );
       }
     }
 

@@ -1,6 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import TreeNode from "./TreeNode.jsx";
 import { getTree, createTreeNode, updateTreeNode, deleteTreeNode } from "../api.js";
+
+function updateNodeInTree(nodes, id, checked) {
+  function cloneAndCascade(list) {
+    return list.map((node) => {
+      if (node.id === id) {
+        return setAllChecked(node, checked);
+      }
+      if (node.children?.length) {
+        const updatedChildren = cloneAndCascade(node.children);
+        const allChecked = updatedChildren.length > 0 && updatedChildren.every((c) => c.checked);
+        return { ...node, children: updatedChildren, checked: allChecked };
+      }
+      return node;
+    });
+  }
+
+  function setAllChecked(node, val) {
+    return {
+      ...node,
+      checked: val,
+      children: node.children ? node.children.map((c) => setAllChecked(c, val)) : [],
+    };
+  }
+
+  return cloneAndCascade(nodes);
+}
 
 export default function TreeView() {
   const [tree, setTree] = useState([]);
@@ -8,53 +34,121 @@ export default function TreeView() {
   const [error, setError] = useState("");
   const [groupTitle, setGroupTitle] = useState("");
 
-  const load = () => {
+  const load = useCallback(() => {
     getTree()
-      .then(setTree)
+      .then((data) => setTree(data || []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleAddGroup = async (e) => {
     e.preventDefault();
-    if (!groupTitle.trim()) return;
+    const cleanTitle = groupTitle.trim();
+    if (!cleanTitle) return;
+
+    const tempId = `temp-g-${Date.now()}`;
+    const optimisticGroup = {
+      id: tempId,
+      title: cleanTitle,
+      parentId: null,
+      deadline: null,
+      checked: false,
+      children: [],
+      order: tree.length,
+      createdAt: new Date().toISOString(),
+    };
+
+    setTree((prev) => [...prev, optimisticGroup]);
+    setGroupTitle("");
+
     try {
-      await createTreeNode({ title: groupTitle.trim(), parentId: null });
-      setGroupTitle("");
-      load();
+      const created = await createTreeNode({ title: cleanTitle, parentId: null });
+      setTree((prev) => prev.map((n) => (n.id === tempId ? { ...created, children: [] } : n)));
     } catch (e) {
+      setTree((prev) => prev.filter((n) => n.id !== tempId));
       setError(e.message);
     }
   };
 
   const handleAddChild = async (parentId, title, deadline) => {
+    const tempId = `temp-c-${Date.now()}`;
+    const optimisticChild = {
+      id: tempId,
+      title,
+      parentId,
+      deadline: deadline || null,
+      checked: false,
+      children: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    function insertChild(nodes) {
+      return nodes.map((n) => {
+        if (n.id === parentId) {
+          return {
+            ...n,
+            checked: false,
+            children: [...(n.children || []), optimisticChild],
+          };
+        }
+        if (n.children?.length) {
+          return { ...n, children: insertChild(n.children) };
+        }
+        return n;
+      });
+    }
+
+    setTree((prev) => insertChild(prev));
+
     try {
-      await createTreeNode({ title, parentId, deadline });
-      load();
+      const created = await createTreeNode({ title, parentId, deadline });
+      function replaceTemp(nodes) {
+        return nodes.map((n) => {
+          if (n.id === tempId) return { ...created, children: [] };
+          if (n.children?.length) return { ...n, children: replaceTemp(n.children) };
+          return n;
+        });
+      }
+      setTree((prev) => replaceTemp(prev));
     } catch (e) {
+      load();
       setError(e.message);
     }
   };
 
   const handleToggle = async (id, checked) => {
+    const backup = tree;
+    setTree((prev) => updateNodeInTree(prev, id, checked));
     try {
       const updated = await updateTreeNode(id, { checked });
-      setTree(updated);
+      if (updated) setTree(updated);
     } catch (e) {
+      setTree(backup);
       setError(e.message);
     }
   };
 
   const handleDelete = async (id) => {
+    const backup = tree;
+    function removeNode(nodes) {
+      return nodes
+        .filter((n) => n.id !== id)
+        .map((n) => (n.children ? { ...n, children: removeNode(n.children) } : n));
+    }
+    setTree((prev) => removeNode(prev));
     try {
       const updated = await deleteTreeNode(id);
-      setTree(updated);
+      if (updated) setTree(updated);
     } catch (e) {
+      setTree(backup);
       setError(e.message);
     }
   };
+
 
   return (
     <div className="flex flex-col gap-6">

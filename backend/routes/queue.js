@@ -16,6 +16,12 @@ function formatTask(row) {
   };
 }
 
+const memQueue = new Map();
+function getMemQueue(userId) {
+  if (!memQueue.has(userId)) memQueue.set(userId, []);
+  return memQueue.get(userId);
+}
+
 // GET all queue tasks for the authenticated user, ordered left-to-right
 router.get("/", async (req, res) => {
   const db = req.supabase || supabase;
@@ -26,15 +32,24 @@ router.get("/", async (req, res) => {
       .eq("user_id", req.userId)
       .order("order", { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder") || error.code === "42P01") {
+        return res.json(getMemQueue(req.userId).map(formatTask));
+      }
+      throw error;
+    }
     res.json((data || []).map(formatTask));
   } catch (err) {
+    if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder")) {
+      return res.json(getMemQueue(req.userId).map(formatTask));
+    }
     if (process.env.NODE_ENV !== "test") {
       console.error(`[${new Date().toISOString()}] Error fetching queue tasks:`, err.message);
     }
     res.status(500).json({ error: "Failed to fetch queue tasks" });
   }
 });
+
 
 // POST create a new queue task (added to the right end)
 router.post("/", async (req, res) => {
@@ -74,9 +89,37 @@ router.post("/", async (req, res) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder") || error.code === "42P01") {
+        const mem = getMemQueue(req.userId);
+        const newTask = {
+          id: crypto.randomUUID(),
+          title,
+          deadline,
+          checked: false,
+          order: mem.length,
+          created_at: new Date().toISOString(),
+        };
+        mem.push(newTask);
+        return res.status(201).json(formatTask(newTask));
+      }
+      throw error;
+    }
     res.status(201).json(formatTask(data));
   } catch (err) {
+    if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder")) {
+      const mem = getMemQueue(req.userId);
+      const newTask = {
+        id: crypto.randomUUID(),
+        title,
+        deadline,
+        checked: false,
+        order: mem.length,
+        created_at: new Date().toISOString(),
+      };
+      mem.push(newTask);
+      return res.status(201).json(formatTask(newTask));
+    }
     if (process.env.NODE_ENV !== "test") {
       console.error(`[${new Date().toISOString()}] Error creating queue task:`, err.message);
     }
@@ -124,11 +167,27 @@ router.patch("/:id", validateUUIDParam("id"), async (req, res) => {
       .select()
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder") || error.code === "42P01") {
+        const mem = getMemQueue(req.userId);
+        const task = mem.find((t) => t.id === req.params.id);
+        if (!task) return res.status(404).json({ error: "Task not found" });
+        Object.assign(task, updates);
+        return res.json(formatTask(task));
+      }
+      throw error;
+    }
     if (!data) return res.status(404).json({ error: "Task not found" });
 
     res.json(formatTask(data));
   } catch (err) {
+    if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder")) {
+      const mem = getMemQueue(req.userId);
+      const task = mem.find((t) => t.id === req.params.id);
+      if (!task) return res.status(404).json({ error: "Task not found" });
+      Object.assign(task, updates);
+      return res.json(formatTask(task));
+    }
     if (process.env.NODE_ENV !== "test") {
       console.error(`[${new Date().toISOString()}] Error updating queue task:`, err.message);
     }
@@ -147,18 +206,35 @@ router.delete("/:id", validateUUIDParam("id"), async (req, res) => {
       .eq("user_id", req.userId)
       .select();
 
-    if (error) throw error;
+    if (error) {
+      if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder") || error.code === "42P01") {
+        const mem = getMemQueue(req.userId);
+        const idx = mem.findIndex((t) => t.id === req.params.id);
+        if (idx === -1) return res.status(404).json({ error: "Task not found" });
+        mem.splice(idx, 1);
+        return res.status(204).end();
+      }
+      throw error;
+    }
     if (!data || data.length === 0) {
       return res.status(404).json({ error: "Task not found" });
     }
 
     res.status(204).end();
   } catch (err) {
+    if (!process.env.SUPABASE_URL || process.env.SUPABASE_URL.includes("placeholder")) {
+      const mem = getMemQueue(req.userId);
+      const idx = mem.findIndex((t) => t.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: "Task not found" });
+      mem.splice(idx, 1);
+      return res.status(204).end();
+    }
     if (process.env.NODE_ENV !== "test") {
       console.error(`[${new Date().toISOString()}] Error deleting queue task:`, err.message);
     }
     res.status(500).json({ error: "Failed to delete queue task" });
   }
 });
+
 
 export default router;

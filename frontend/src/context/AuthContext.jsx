@@ -9,6 +9,18 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if previously logged in as guest
+    if (localStorage.getItem("aloft_guest_session") === "true") {
+      const guestUser = {
+        id: "00000000-0000-0000-0000-000000000001",
+        email: "guest@aloft.local",
+      };
+      setSession({ access_token: "mock-guest-token", user: guestUser });
+      setUser(guestUser);
+      setLoading(false);
+      return;
+    }
+
     // 1. Fetch initial session on load
     supabase.auth
       .getSession()
@@ -66,9 +78,25 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  const signInAsGuest = useCallback(() => {
+    const guestUser = {
+      id: "00000000-0000-0000-0000-000000000001",
+      email: "guest@aloft.local",
+    };
+    localStorage.setItem("aloft_guest_session", "true");
+    setSession({ access_token: "mock-guest-token", user: guestUser });
+    setUser(guestUser);
+  }, []);
+
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    localStorage.removeItem("aloft_guest_session");
+    setSession(null);
+    setUser(null);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore if supabase is not connected
+    }
   }, []);
 
   return (
@@ -80,9 +108,11 @@ export function AuthProvider({ children }) {
         signUp,
         signIn,
         signInWithGoogle,
+        signInAsGuest,
         signOut,
       }}
     >
+
       {children}
     </AuthContext.Provider>
   );

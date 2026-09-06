@@ -11,7 +11,7 @@ import {
   addMonths,
   subMonths,
 } from "date-fns";
-import { getQueueTasks, getTree } from "../api.js";
+import { getTodayTasks, getQueueTasks, getTree } from "../api.js";
 
 function flattenTree(nodes) {
   let out = [];
@@ -28,11 +28,16 @@ export default function CalendarView() {
   const [selectedDay, setSelectedDay] = useState(null);
 
   useEffect(() => {
-    Promise.all([getQueueTasks(), getTree()])
-      .then(([queue, tree]) => {
-        const flatTree = flattenTree(tree).map((n) => ({ ...n, source: "Tree" }));
-        const flatQueue = queue.map((t) => ({ ...t, source: "Queue" }));
-        setItems([...flatQueue, ...flatTree].filter((t) => t.deadline));
+    Promise.all([
+      getTodayTasks().catch(() => []),
+      getQueueTasks().catch(() => []),
+      getTree().catch(() => []),
+    ])
+      .then(([today, queue, tree]) => {
+        const flatToday = (today || []).map((t) => ({ ...t, deadline: t.date, source: "Today" }));
+        const flatQueue = (queue || []).map((t) => ({ ...t, source: "Queue" }));
+        const flatTree = flattenTree(tree || []).map((n) => ({ ...n, source: "Tree" }));
+        setItems([...flatToday, ...flatQueue, ...flatTree].filter((t) => t.deadline));
       })
       .catch(() => {});
   }, []);
@@ -43,7 +48,23 @@ export default function CalendarView() {
     return eachDayOfInterval({ start, end });
   }, [month]);
 
-  const itemsForDay = (day) => items.filter((t) => isSameDay(new Date(t.deadline), day));
+  // Fast O(1) indexed lookup by YYYY-MM-DD
+  const itemsByDate = useMemo(() => {
+    const map = {};
+    for (const it of items) {
+      if (!it.deadline) continue;
+      const key = it.deadline.slice(0, 10);
+      if (!map[key]) map[key] = [];
+      map[key].push(it);
+    }
+    return map;
+  }, [items]);
+
+  const itemsForDay = (day) => {
+    const key = format(day, "yyyy-MM-dd");
+    return itemsByDate[key] || [];
+  };
+
   const selectedItems = selectedDay ? itemsForDay(selectedDay) : [];
 
   return (

@@ -54,13 +54,27 @@ CREATE TABLE IF NOT EXISTS public.habit_completions (
     CONSTRAINT habit_completions_habit_date_uniq UNIQUE (habit_id, date)
 );
 
--- 6. Indexes for query performance
+-- 6. Create today_tasks table (daily dedicated action tasks with priority)
+CREATE TABLE IF NOT EXISTS public.today_tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    priority TEXT NOT NULL DEFAULT 'none',
+    checked BOOLEAN NOT NULL DEFAULT FALSE,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- 7. Indexes for query performance
 CREATE INDEX IF NOT EXISTS idx_queue_tasks_user_id ON public.queue_tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_today_tasks_user_date ON public.today_tasks(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_tree_nodes_user_id ON public.tree_nodes(user_id);
 CREATE INDEX IF NOT EXISTS idx_tree_nodes_parent_id ON public.tree_nodes(parent_id);
 CREATE INDEX IF NOT EXISTS idx_habits_user_year ON public.habits(user_id, year);
 CREATE INDEX IF NOT EXISTS idx_habit_completions_user_date ON public.habit_completions(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_habit_completions_habit_id ON public.habit_completions(habit_id);
+
 
 -- 7. Enable Row Level Security (RLS) on all tables
 ALTER TABLE public.queue_tasks ENABLE ROW LEVEL SECURITY;
@@ -178,3 +192,28 @@ DROP POLICY IF EXISTS "Users can delete their own habit completions" ON public.h
 CREATE POLICY "Users can delete their own habit completions"
     ON public.habit_completions FOR DELETE
     USING (auth.uid() = user_id);
+
+-- 13. RLS Policies for today_tasks (Drop and Recreate)
+ALTER TABLE public.today_tasks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can select their own today tasks" ON public.today_tasks;
+CREATE POLICY "Users can select their own today tasks"
+    ON public.today_tasks FOR SELECT
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own today tasks" ON public.today_tasks;
+CREATE POLICY "Users can insert their own today tasks"
+    ON public.today_tasks FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own today tasks" ON public.today_tasks;
+CREATE POLICY "Users can update their own today tasks"
+    ON public.today_tasks FOR UPDATE
+    USING (auth.uid() = user_id)
+    WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own today tasks" ON public.today_tasks;
+CREATE POLICY "Users can delete their own today tasks"
+    ON public.today_tasks FOR DELETE
+    USING (auth.uid() = user_id);
+

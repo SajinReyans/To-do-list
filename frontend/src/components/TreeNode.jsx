@@ -117,12 +117,12 @@ export default function TreeNode({ node, depth, onToggle, onAddChild, onDelete }
           </span>
         )}
 
-        {/* Action buttons (Add child / Delete) */}
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 ml-auto sm:ml-2 transition-opacity shrink-0">
+        {/* Action buttons (Add child / Delete) - accessible on mobile touch as well as hover */}
+        <div className="opacity-85 sm:opacity-0 group-hover:opacity-100 flex items-center gap-1 ml-auto sm:ml-2 transition-opacity shrink-0">
           <button
             type="button"
             onClick={() => setAddingChild((v) => !v)}
-            className="text-[11px] font-medium px-2 py-0.5 rounded-lg border transition-colors hover:bg-black/[0.04] cursor-pointer"
+            className="text-[11px] font-medium px-2 py-1 rounded-lg border transition-colors hover:bg-black/[0.04] active:scale-95 cursor-pointer"
             style={{ borderColor: "var(--border)", color: "var(--text-soft)" }}
             title="Add child group or task"
           >
@@ -131,7 +131,7 @@ export default function TreeNode({ node, depth, onToggle, onAddChild, onDelete }
           <button
             type="button"
             onClick={() => onDelete(node.id)}
-            className="text-[11px] font-medium px-2 py-0.5 rounded-lg border hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+            className="text-[11px] font-medium px-2 py-1 rounded-lg border hover:bg-red-50 hover:text-red-600 active:scale-95 transition-colors cursor-pointer"
             style={{ borderColor: "var(--border)", color: "var(--text-soft)" }}
             title="Delete this branch and all descendants"
           >

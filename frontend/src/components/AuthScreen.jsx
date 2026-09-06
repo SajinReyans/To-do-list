@@ -32,7 +32,7 @@ export default function AuthScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signInAsGuest } = useAuth();
 
   const handleGoogleAuth = async () => {
     setError("");
@@ -116,7 +116,22 @@ export default function AuthScreen() {
             <span>{googleLoading ? "Connecting to Google…" : isSignUp ? "Sign up with Google" : "Continue with Google"}</span>
           </button>
 
-          <div className="relative my-6 text-center">
+          {/* Guest Demo Mode */}
+          <button
+            type="button"
+            onClick={signInAsGuest}
+            className="w-full mt-2.5 py-2.5 px-4 rounded-2xl text-xs font-semibold border-2 flex items-center justify-center gap-2 transition-transform hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-sm"
+            style={{
+              backgroundColor: "var(--surface)",
+              borderColor: "var(--border)",
+              color: "var(--text)",
+            }}
+          >
+            <span>⚡ Continue as Guest (Instant Access)</span>
+          </button>
+
+          <div className="relative my-5 text-center">
+
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t" style={{ borderColor: "var(--border)" }} />
             </div>

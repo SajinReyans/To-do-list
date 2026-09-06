@@ -5,19 +5,37 @@ const BASE = rawApiUrl
   ? (rawApiUrl.endsWith("/api") ? rawApiUrl : `${rawApiUrl}/api`)
   : "/api";
 
+// Fast in-memory token cache to avoid waiting on async getSession() before every request
+let cachedToken = null;
+
+// Listen to auth changes so token is always fresh
+if (supabase?.auth) {
+  supabase.auth.onAuthStateChange((_event, session) => {
+    cachedToken = session?.access_token || null;
+  });
+}
+
+async function getAccessToken() {
+  if (cachedToken) return cachedToken;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    cachedToken = session?.access_token || null;
+    return cachedToken;
+  } catch {
+    return null;
+  }
+}
+
 async function request(path, options = {}) {
-  // Retrieve token from Supabase session for each request (auto-refreshed by Supabase client)
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const token = await getAccessToken();
 
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
 
-  if (session?.access_token) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const res = await fetch(`${BASE}${path}`, {
@@ -32,6 +50,12 @@ async function request(path, options = {}) {
   if (res.status === 204) return null;
   return res.json();
 }
+
+// Today (dedicated daily tasks with priorities & status)
+export const getTodayTasks = (date) => request(`/today${date ? `?date=${encodeURIComponent(date)}` : ""}`);
+export const createTodayTask = (data) => request("/today", { method: "POST", body: JSON.stringify(data) });
+export const updateTodayTask = (id, data) => request(`/today/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export const deleteTodayTask = (id) => request(`/today/${id}`, { method: "DELETE" });
 
 // Queue (one-day tasks)
 export const getQueueTasks = () => request("/queue");
@@ -58,3 +82,4 @@ export const getHabitCompletions = (id, year) => request(`/habits/${id}/completi
 export const getAllHabitCompletions = (year) => request(`/habits/completions?year=${year}`);
 export const toggleHabitCompletion = (id, date, completed) =>
   request(`/habits/${id}/completions`, { method: "PATCH", body: JSON.stringify({ date, completed }) });
+

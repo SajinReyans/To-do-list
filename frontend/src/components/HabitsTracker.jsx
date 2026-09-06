@@ -33,19 +33,18 @@ const MONTH_NAMES = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
-function calculateStreaks(datesMap, year) {
+function calculateStreaks(datesMap, year, allDays) {
   const currentYear = new Date().getFullYear();
   const isCurrentYear = year === currentYear;
   const today = new Date();
-  const yearStart = startOfYear(new Date(year, 0, 1));
-  const yearEnd = endOfYear(new Date(year, 0, 1));
-  const allDays = eachDayOfInterval({ start: yearStart, end: yearEnd });
+  const yearStart = allDays && allDays.length > 0 ? allDays[0] : startOfYear(new Date(year, 0, 1));
+  const daysList = allDays || eachDayOfInterval({ start: yearStart, end: endOfYear(new Date(year, 0, 1)) });
 
   let longest = 0;
   let currentRun = 0;
   let total = 0;
 
-  for (const day of allDays) {
+  for (const day of daysList) {
     const key = format(day, "yyyy-MM-dd");
     if (datesMap[key]) {
       total += 1;
@@ -55,6 +54,7 @@ function calculateStreaks(datesMap, year) {
       currentRun = 0;
     }
   }
+
 
   // Calculate current active streak
   let currentStreak = 0;
@@ -412,7 +412,7 @@ export default function HabitsTracker() {
         <div className="flex flex-col gap-6">
           {habits.map((habit) => {
             const habitCompletions = completions[habit.id] || {};
-            const stats = calculateStreaks(habitCompletions, year);
+            const stats = calculateStreaks(habitCompletions, year, yearDays);
             const isDoneToday = Boolean(habitCompletions[todayStr]);
             const habitColor = habit.color || "var(--accent)";
 
