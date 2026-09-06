@@ -77,4 +77,11 @@ export const getHabitCompletions = (id, year) => request(`/habits/${id}/completi
 export const getAllHabitCompletions = (year) => request(`/habits/completions?year=${year}`);
 export const toggleHabitCompletion = (id, date, completed) =>
   request(`/habits/${id}/completions`, { method: "PATCH", body: JSON.stringify({ date, completed }) });
+export const sendTestHabitReminder = (id, email, message) =>
+  request(`/habits/${id}/test-reminder`, {
+    method: "POST",
+    body: JSON.stringify({ email, message }),
+  });
+export const checkHabitRemindersNow = () =>
+  request("/habits/check-reminders", { method: "POST" });
 

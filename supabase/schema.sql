@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS public.user_settings (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 4. Create habits table (yearly habit definitions)
+-- 4. Create habits table (yearly habit definitions with optional daily deadline reminder)
 CREATE TABLE IF NOT EXISTS public.habits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -40,8 +40,14 @@ CREATE TABLE IF NOT EXISTS public.habits (
     icon TEXT,
     year INTEGER NOT NULL,
     archived BOOLEAN NOT NULL DEFAULT FALSE,
+    reminder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    reminder_time TEXT DEFAULT '20:00',
+    reminder_message TEXT,
+    reminder_email TEXT,
+    last_reminded_date TEXT,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
 
 -- 5. Create habit_completions table (daily checkbox records)
 CREATE TABLE IF NOT EXISTS public.habit_completions (

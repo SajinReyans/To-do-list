@@ -15,6 +15,7 @@ import {
   getAllHabitCompletions,
   toggleHabitCompletion,
 } from "../api.js";
+import HabitReminderModal from "./HabitReminderModal.jsx";
 
 const PRESET_ICONS = ["📖", "🏃", "💧", "🧘", "🥗", "💻", "🎨", "✍️", "🎸", "💤", "⚡", "🎯"];
 const PRESET_COLORS = [
@@ -96,6 +97,13 @@ export default function HabitsTracker() {
   const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
   const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'months'
   const [expandedMonths, setExpandedMonths] = useState({});
+  const [reminderModalHabit, setReminderModalHabit] = useState(null);
+
+  const handleHabitUpdated = useCallback((updatedHabit) => {
+    setHabits((prev) =>
+      prev.map((h) => (h.id === updatedHabit.id ? { ...h, ...updatedHabit } : h))
+    );
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -446,6 +454,30 @@ export default function HabitsTracker() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Reminder Configuration Button */}
+                    <button
+                      type="button"
+                      onClick={() => setReminderModalHabit(habit)}
+                      className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border-2 flex items-center gap-1.5 transition-transform hover:-translate-y-0.5 cursor-pointer shadow-sm"
+                      style={{
+                        backgroundColor: habit.reminderEnabled ? "var(--card)" : "var(--bg)",
+                        borderColor: habit.reminderEnabled ? "var(--accent)" : "var(--border)",
+                        color: "var(--text)",
+                      }}
+                      title={
+                        habit.reminderEnabled
+                          ? `Deadline reminder active at ${habit.reminderTime || "21:00"}`
+                          : "Configure deadline email reminder"
+                      }
+                    >
+                      <span className={habit.reminderEnabled ? "animate-bounce" : ""}>🔔</span>
+                      {habit.reminderEnabled ? (
+                        <span className="font-bold text-[11px]">{habit.reminderTime || "21:00"}</span>
+                      ) : (
+                        <span className="hidden sm:inline text-[11px] opacity-70">Reminder</span>
+                      )}
+                    </button>
+
                     {/* Quick check for today */}
                     {year === currentYear && (
                       <button
@@ -610,6 +642,14 @@ export default function HabitsTracker() {
           })}
         </div>
       )}
+
+      {/* Habit Reminder Modal */}
+      <HabitReminderModal
+        habit={reminderModalHabit}
+        isOpen={Boolean(reminderModalHabit)}
+        onClose={() => setReminderModalHabit(null)}
+        onHabitUpdated={handleHabitUpdated}
+      />
     </div>
   );
 }

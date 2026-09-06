@@ -24,6 +24,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.19.2",
     "nanoid": "^5.0.7",
+    "nodemailer": "^10.0.0",
     "vite": "^6.2.0"
   },
   "devDependencies": {
